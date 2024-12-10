@@ -1,0 +1,31 @@
+<configuration>
+  <!-- Replication factor -->
+  <property>
+    <name>dfs.replication</name>
+    <value>1</value>
+  </property>
+
+  <!-- NameNode data directory -->
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>file:///hadoop/dfs/name</value>
+  </property>
+
+  <!-- DataNode data directory -->
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>file:///hadoop/dfs/data</value>
+  </property>
+
+  <!-- HDFS block size -->
+  <property>
+    <name>dfs.blocksize</name>
+    <value>134217728</value>
+  </property>
+
+  <!-- Permissions (disable for simplicity in dev environments) -->
+  <property>
+    <name>dfs.permissions</name>
+    <value>false</value>
+  </property>
+</configuration>

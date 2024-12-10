@@ -1,0 +1,671 @@
+# VARS ------------------------------------------------------------------------------------------------------------------------------------------------
+x-superset-image: &superset-image apache/superset:latest-dev
+x-superset-depends-on: &superset-depends-on
+  - superset-postgres
+  - superset-redis
+x-superset-volumes:
+  &superset-volumes
+  - ./superset/docker:/app/docker
+  - ./superset/superset_home:/app/superset_home
+
+# NETWORK -------------------------------------------------------------------------------------------------------------------------------------------
+networks:
+  vnet-pyrehd:
+    driver: bridge
+  #no-internet:
+  #  driver: bridge
+  #  internal: true
+services:
+# NGINX ------------------------------------------------------------------------------------------------------------------------------------------------------
+  nginx:
+    image: nginx:latest
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - vnet-pyrehd
+
+# HDFS ------------------------------------------------------------------------------------------------------------------------------------------------------
+  hdfs-namenode:
+    image: apache/hadoop:3.4.1
+    container_name: hdfs-namenode
+    hostname: hdfs-namenode
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+    volumes:
+      - ./hdfs/hadoop_config:/opt/hadoop/etc/hadoop
+      - ./hdfs/start-hdfs.sh:/start-hdfs.sh
+      - ./hdfs/name:/hadoop/dfs/name
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    command: [ "/bin/bash", "/start-hdfs.sh" ]
+    networks:
+      - vnet-pyrehd
+
+  hdfs-datanode:
+    image: apache/hadoop:3.4.1
+    container_name: hdfs-datanode
+    hostname: hdfs-datanode
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+    volumes:
+      - ./hdfs/hadoop_config:/opt/hadoop/etc/hadoop
+      - ./hdfs/init-datanode.sh:/init-datanode.sh
+      - ./hdfs/data:/hadoop/dfs/data
+    depends_on:
+      - hdfs-namenode
+    command: [ "/bin/bash", "/init-datanode.sh" ]
+    networks:
+      - vnet-pyrehd
+
+# TRINO ------------------------------------------------------------------------------------------------------------------------------------------------------
+  trino: 
+    image: trinodb/trino:latest
+    container_name: trino
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./trino/config.properties:/etc/trino/config.properties
+      - ./trino/catalog:/etc/trino/catalog
+      # - ./trino/password-authenticator.properties:/etc/trino/password-authenticator.properties
+      # - ./trino/password.db:/etc/trino/password.db
+    # environment:
+    #   - TRINO_PASSWORD_AUTH_FILE=/etc/trino/password-file
+    #   - HADOOP_USER_NAME=value
+    networks:
+      - vnet-pyrehd
+    depends_on:
+      - hive-metastore
+
+# SPARK ------------------------------------------------------------------------------------------------------------------------------------------------------
+  spark-master:
+    build: ./spark
+    container_name: spark-master
+    hostname: spark-master
+    environment:
+      - SPARK_MASTER_LOG=/opt/spark/logs
+      - SPARK_MASTER_WEBUI_PORT=8080
+    ports:
+      - "7077:7077"
+      - "8083:8080"
+    entrypoint: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    user: root
+    volumes:
+      - ./spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - ./landing_zone:/opt/landing_zone
+    networks:
+      - vnet-pyrehd
+
+  spark-worker:
+    build: ./spark
+    container_name: spark-worker
+    hostname: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_WORKER_LOG=/opt/spark/logs
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+    ports:
+      - "8086:8081"
+    entrypoint: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    user: root
+    volumes:
+      - ./spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - ./landing_zone:/opt/landing_zone
+    networks:
+      - vnet-pyrehd
+
+# BEAM -------------------------------------------------------------------------------------------------------------------------------------------
+  # apache-beam:
+  #   image: apache/beam_python3.8_sdk:latest
+  #   container_name: apache-beam
+  #   environment:
+  #     - SPARK_MASTER_URL=spark://spark-master:7077
+  #   volumes:
+  #     - ./beam/pipelines:/opt/beam/pipelines
+  #   networks:
+  #     - vnet-pyrehd
+  #   entrypoint: ["/bin/bash", "-c", "tail -f /dev/null"]
+  
+# AIRFLOW ------------------------------------------------------------------------------------------------------------------------------------------------------
+  # Common Airflow config
+  x-airflow-common:
+    &airflow-common
+    build: ./airflow
+    environment:
+      &airflow-common-env
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: '5432'
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${_AIRFLOW_POSTGRES_USER}:${_AIRFLOW_POSTGRES_PASSWORD}@postgres:5432/${AIRFLOW_POSTGRES_DB}
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${_AIRFLOW_POSTGRES_USER}:${_AIRFLOW_POSTGRES_PASSWORD}@postgres:5432/${AIRFLOW_POSTGRES_DB}
+      AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE: 'true'
+      SPARK_HOST: ${SPARK_HOST}
+      SPARK_PORT: ${SPARK_PORT}
+      TRINO_HOST: ${TRINO_HOST}
+      TRINO_PORT: ${TRINO_PORT}
+      KAFKA_HOST: ${KAFKA_HOST}
+      KAFKA_PORT: ${KAFKA_PORT}
+      KAFKA_BTC_TOPIC: ${KAFKA_BTC_TOPIC}
+      KAFKA_ETH_TOPIC: ${KAFKA_ETH_TOPIC}
+      FLASK_HOST: ${FLASK_HOST}
+      FLASK_PORT: ${FLASK_PORT}
+      HIVE_HOST: ${HIVE_HOST}
+      HIVE_PORT: ${HIVE_PORT}
+      HDFS_HOST: ${HDFS_HOST}
+      HDFS_PORT: ${HDFS_PORT}
+      LOCALHOST: ${LOCALHOST}
+      # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    user: "${AIRFLOW_UID:-50000}:0"
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
+      - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    networks:
+      - vnet-pyrehd
+    depends_on:
+      &airflow-common-depends-on
+      airflow-redis:
+        condition: service_healthy
+      airflow-postgres:
+        condition: service_healthy
+
+  # Redis for Airflow
+  airflow-redis: 
+    container_name: redis
+    image: redis:7.2-bookworm
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
+    networks:
+      - vnet-pyrehd
+
+  # PostgreSQL for Airflow Metadata
+  airflow-postgres: 
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=${_AIRFLOW_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${_AIRFLOW_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${AIRFLOW_POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres/airflow/data:/var/lib/postgresql/data  # Persistent volume for PostgreSQL data
+      - ./postgres/airflow/init/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - vnet-pyrehd
+
+  # Airflow Web Server
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8085:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - vnet-pyrehd
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - vnet-pyrehd
+
+  # Airflow Worker
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      <<: *airflow-common-env
+      DUMB_INIT_SETSID: "0"
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - vnet-pyrehd
+
+  # Airflow triggerer
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - vnet-pyrehd
+
+  # Airflow CLI
+  airflow-cli:
+    <<: *airflow-common
+    profiles:
+      - debug
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0"
+    command:
+      - bash
+      - -c
+      - airflow
+    networks:
+      - vnet-pyrehd
+
+  # Initialize airflow
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: [/bin/bash]
+    command:
+      - -c
+      - |
+        if [[ -z "${AIRFLOW_UID}" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
+          echo "If you are on Linux, you SHOULD follow the instructions below to set "
+          echo "AIRFLOW_UID environment variable, otherwise files will be owned by root."
+          echo "For other operating systems you can get rid of the warning with manually created .env file:"
+          echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
+          echo
+        fi
+        one_meg=1048576
+        mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
+        cpus_available=$$(grep -cE 'cpu[0-9]+' /proc/stat)
+        disk_available=$$(df / | tail -1 | awk '{print $$4}')
+        warning_resources="false"
+        if (( mem_available < 4000 )) ; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough memory available for Docker.\e[0m"
+          echo "At least 4GB of memory required. You have $$(numfmt --to iec $$((mem_available * one_meg)))"
+          echo
+          warning_resources="true"
+        fi
+        if (( cpus_available < 2 )); then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough CPUS available for Docker.\e[0m"
+          echo "At least 2 CPUs recommended. You have $${cpus_available}"
+          echo
+          warning_resources="true"
+        fi
+        if (( disk_available < one_meg * 10 )); then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough Disk space available for Docker.\e[0m"
+          echo "At least 10 GBs recommended. You have $$(numfmt --to iec $$((disk_available * 1024 )))"
+          echo
+          warning_resources="true"
+        fi
+        if [[ $${warning_resources} == "true" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: You have not enough resources to run Airflow (see above)!\e[0m"
+          echo "Please follow the instructions to increase amount of resources available:"
+          echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
+          echo
+        fi
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
+    user: "0:0"
+    networks:
+      - vnet-pyrehd
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/sources
+
+# ZEPELLIN --------------------------------------------------------------------------------------------------------------------
+  # zeppelin:
+  #   build: ./zeppelin
+  #   hostname: zeppelin
+  #   container_name: zeppelin
+  #   ports:
+  #     - "8084:8080"
+  #   networks:
+  #     - vnet-pyrehd
+  #   environment:
+  #     - SPARK_MASTER=spark://spark-master:7077
+  #   volumes:
+  #     - ./zeppelin/conf/zeppelin-site.xml:/opt/zeppelin/conf/zeppelin-site.xml
+  #     - ./zeppelin/interpreters/spark.json:/opt/zeppelin/interpreter/spark/interpreter-setting.json
+  #     - ./zeppelin/interpreters/spark-submit.json:/opt/zeppelin/interpreter/spark-submit/interpreter-setting.json
+  #     - ./zeppelin/notebook:/opt/zeppelin/notebook
+  #     - ./landing_zone:/opt/landing_zone
+  #   user: root
+  #   depends_on:
+  #     - spark-master
+  #     - spark-worker
+  #     - hdfs-namenode
+  #     - hdfs-datanode
+  #     - hive-metastore
+
+# KAFKA --------------------------------------------------------------------------------------------------------
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    hostname: zookeeper
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ALLOW_ANONYMOUS_LOGIN=${ALLOW_ANONYMOUS_LOGIN}
+      - ZOO_ENABLE_AUTH=${ZOO_ENABLE_AUTH}
+    ports:
+      - "2181:2181"
+    networks:
+      - vnet-pyrehd
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    hostname: kafka
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    volumes:
+      - ./kafka:/bitnami/kafka
+    depends_on:
+      - zookeeper
+    networks:
+      - vnet-pyrehd
+
+  init-kafka:
+    image: bitnami/kafka:latest
+    container_name: init-kafka
+    depends_on:
+      - kafka
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      # blocks until kafka is reachable
+      kafka-topics.sh --bootstrap-server kafka:9092 --list
+
+      echo -e 'Creating kafka topics'
+      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic btc --replication-factor 1 --partitions 1
+      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic eth --replication-factor 1 --partitions 1
+      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic dev --replication-factor 1 --partitions 1
+
+      echo -e 'Successfully created the following topics:'
+      kafka-topics.sh --bootstrap-server kafka:9092 --list
+      "
+    networks:
+      - vnet-pyrehd
+
+# HIVE ------------------------------------------------------------------------------------------------------------------------------------------------------
+  hive-metastore:
+    build: ./hive
+    container_name: hive-metastore
+    hostname: hive-metastore
+    environment:
+      - SERVICE_NAME=metastore
+      - DB_DRIVER=postgres
+      - SERVICE_OPTS=-Xmx1G -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://hive-postgres:5432/${HIVE_POSTGRES_DB} -Djavax.jdo.option.ConnectionUserName=${_HIVE_POSTGRES_USER} -Djavax.jdo.option.ConnectionPassword=${_HIVE_POSTGRES_PASSWORD}
+      #- HIVE_CUSTOM_CONF_DIR=/hive_custom_conf set this to overwrite the whole conf folder
+    ports:
+      - "9083:9083"
+    volumes:
+      #- ./hive/conf:/hive_custom_conf
+      - ./hive/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
+    networks:
+      - vnet-pyrehd
+    depends_on:
+      hive-postgres:
+        condition: service_healthy
+
+  hive-server:
+    build: ./hive
+    container_name: hive-server
+    hostname: hive-server
+    environment:
+      - SERVICE_NAME=hiveserver2
+      - DB_DRIVER=postgres
+      - SERVICE_OPTS=-Xmx1G -Dhive.metastore.uris=thrift://hive-metastore:9083 -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://hive-postgres:5432/${HIVE_POSTGRES_DB} -Djavax.jdo.option.ConnectionUserName=${_HIVE_POSTGRES_USER} -Djavax.jdo.option.ConnectionPassword=${_HIVE_POSTGRES_PASSWORD}
+      - IS_RESUME=true
+      #- HIVE_CUSTOM_CONF_DIR=/hive_custom_conf set this to overwrite the whole conf folder
+    ports:
+      - "10000:10000"
+      - "10002:10002"
+    volumes:
+      #- ./hive/conf:/hive_custom_conf
+      - ./hive/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
+    networks:
+      - vnet-pyrehd
+    depends_on:
+      - hive-metastore
+
+  hive-postgres: 
+    image: postgres:latest
+    container_name: hive-postgres
+    hostname: hive-postgres
+    environment:
+      - POSTGRES_USER=${_HIVE_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${_HIVE_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${HIVE_POSTGRES_DB}
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./postgres/hive/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "metastore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - vnet-pyrehd
+
+# APPS -----------------------------------------------------------------------------------------------------------------------
+  producer:
+    container_name: producer
+    hostname: producer
+    build:
+      context: ./apps/producer
+      dockerfile: dockerfile
+    ports:
+      - "8087:8087"
+    command: python app.py
+    depends_on:
+      - kafka
+      - trino
+    networks:
+      - vnet-pyrehd
+
+# SUPERSET -----------------------------------------------------------------------------------------------------------------------
+  # superset-redis:
+  #   image: redis:7.2-bookworm #redis:7
+  #   hostname: superset-redis
+  #   container_name: superset_cache
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./redis/superset_data:/data
+  #   networks:
+  #     - vnet-pyrehd
+
+  # superset-postgres:
+  #   env_file:
+  #     - path: superset/docker/.env
+  #       required: true
+  #   image: postgres:15
+  #   container_name: superset_db
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./postgres/superset/data:/var/lib/postgresql/data
+  #     - ./superset/docker/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+  #   networks:
+  #     - vnet-pyrehd
+
+  # superset:
+  #   env_file:
+  #     - path: superset/docker/.env
+  #       required: true
+  #   image: *superset-image
+  #   container_name: superset_app
+  #   command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
+  #   user: "root"
+  #   restart: unless-stopped
+  #   ports:
+  #     - 8090:8088
+  #   depends_on: *superset-depends-on
+  #   volumes: *superset-volumes
+  #   networks:
+  #     - vnet-pyrehd
+
+  # superset-init:
+  #   image: *superset-image
+  #   container_name: superset_init
+  #   command: ["/app/docker/docker-init.sh"]
+  #   env_file:
+  #     - path: ./superset/docker/.env
+  #       required: true
+  #   depends_on: *superset-depends-on
+  #   user: "root"
+  #   volumes: *superset-volumes
+  #   healthcheck:
+  #     disable: true
+  #   networks:
+  #     - vnet-pyrehd
+
+  # superset-worker:
+  #   image: *superset-image
+  #   container_name: superset_worker
+  #   command: ["/app/docker/docker-bootstrap.sh", "worker"]
+  #   env_file:
+  #     - path: ./superset/docker/.env # default
+  #       required: true
+  #   restart: unless-stopped
+  #   depends_on: *superset-depends-on
+  #   user: "root"
+  #   volumes: *superset-volumes
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "celery -A superset.tasks.celery_app:app inspect ping -d celery@$$HOSTNAME",
+  #       ]
+  #   networks:
+  #     - vnet-pyrehd
+
+  # superset-worker-beat:
+  #   image: *superset-image
+  #   container_name: superset_worker_beat
+  #   command: ["/app/docker/docker-bootstrap.sh", "beat"]
+  #   env_file:
+  #     - path: ./superset/docker/.env # default
+  #       required: true
+  #   restart: unless-stopped
+  #   depends_on: *superset-depends-on
+  #   user: "root"
+  #   volumes: *superset-volumes
+  #   healthcheck:
+  #     disable: true
+  #   networks:
+  #     - vnet-pyrehd
+
+# MLFLOW -----------------------------------------------------------------------------------------------------------------------
+  # mlflow:
+  #   image: bitnami/mlflow:latest
+  #   container_name: mlflow
+  #   hostname: mlflow
+  #   environment:
+  #     - MLFLOW_BACKEND_STORE_URI=postgresql://${_MLFLOW_POSTGRES_USER}:${_MLFLOW_POSTGRES_PASSWORD}@mlflow-postgres:5432/${MLFLOW_POSTGRES_DB}
+  #     - MLFLOW_ARTIFACT_ROOT=file:///mlflow-artifacts
+  #     - MLFLOW_HOST=0.0.0.0
+  #     - MLFLOW_TRACKING_URI=http://localhost:5000
+  #   ports:
+  #     - "5000:5000"
+  #   volumes:
+  #     - ./mlflow/artifacts:/mlflow-artifacts
+  #   networks:
+  #     - vnet-pyrehd
+  #   depends_on:
+  #     - mlflow-postgres
+
+  # mlflow-postgres: 
+  #   image: postgres:latest
+  #   hostname: mlflow-postgres
+  #   container_name: mlflow-postgres
+  #   environment:
+  #     - POSTGRES_USER=${_MLFLOW_POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${_MLFLOW_POSTGRES_PASSWORD}
+  #     - POSTGRES_DB=${MLFLOW_POSTGRES_DB}
+  #   ports:
+  #     - "5433:5432"
+  #   volumes:
+  #     - ./postgres/mlflow/data:/var/lib/postgresql/data
+  #   networks:
+  #     - vnet-pyrehd

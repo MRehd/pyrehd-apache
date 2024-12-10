@@ -1,0 +1,18 @@
+{
+  "btc": {
+    "kafka_topic": "btc",
+    "catalog": "iceberg",
+    "schema": "crypto",
+    "schedule": null,
+    "monitor_schedule": null,
+    "mode": "sync"
+  },
+  "eth": {
+    "kafka_topic": "eth",
+    "catalog": "iceberg",
+    "schema": "crypto",
+    "schedule": null,
+    "monitor_schedule": null,
+    "mode": "sync"
+  }
+}

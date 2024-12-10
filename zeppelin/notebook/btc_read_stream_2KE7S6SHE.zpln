@@ -1,0 +1,258 @@
+{
+  "paragraphs": [
+    {
+      "text": "%pyspark\r\ncoin \u003d z.input(\u0027coin\u0027, \u0027btc\u0027)\r\ncatalog \u003d z.input(\u0027catalog\u0027, \u0027iceberg\u0027)\r\nnamespace \u003d z.input(\u0027namespace\u0027, \u0027crypto\u0027)\r\ntable \u003d z.input(\u0027table\u0027, \u0027btc\u0027)\r\nkafka_server \u003d z.input(\u0027kafka_server\u0027, \u0027kafka:9092\u0027)\r\nkafka_topic \u003d z.input(\u0027kafka_topic\u0027, \u0027btc\u0027)\r\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-06 23:58:48.395",
+      "progress": 0,
+      "config": {
+        "colWidth": 12.0,
+        "fontSize": 9.0,
+        "results": {},
+        "enabled": true,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "title": true
+      },
+      "settings": {
+        "params": {
+          "coin": "btc",
+          "catalog": "iceberg",
+          "namespace": "crypto",
+          "table": "btc",
+          "kafka_server": "kafka:9092",
+          "kafka_topic": "btc"
+        },
+        "forms": {
+          "coin": {
+            "type": "TextBox",
+            "name": "coin",
+            "displayName": "coin",
+            "defaultValue": "btc",
+            "hidden": false
+          },
+          "catalog": {
+            "type": "TextBox",
+            "name": "catalog",
+            "displayName": "catalog",
+            "defaultValue": "iceberg",
+            "hidden": false
+          },
+          "namespace": {
+            "type": "TextBox",
+            "name": "namespace",
+            "displayName": "namespace",
+            "defaultValue": "crypto",
+            "hidden": false
+          },
+          "table": {
+            "type": "TextBox",
+            "name": "table",
+            "displayName": "table",
+            "defaultValue": "btc",
+            "hidden": false
+          },
+          "kafka_server": {
+            "type": "TextBox",
+            "name": "kafka_server",
+            "displayName": "kafka_server",
+            "defaultValue": "kafka:9092",
+            "hidden": false
+          },
+          "kafka_topic": {
+            "type": "TextBox",
+            "name": "kafka_topic",
+            "displayName": "kafka_topic",
+            "defaultValue": "btc",
+            "hidden": false
+          }
+        }
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733430865287_401518912",
+      "id": "paragraph_1733430865287_401518912",
+      "dateCreated": "2024-12-05 20:34:25.288",
+      "dateStarted": "2024-12-06 23:58:48.412",
+      "dateFinished": "2024-12-06 23:58:48.435",
+      "status": "FINISHED"
+    },
+    {
+      "text": "%pyspark\nsys.path.append(\u0027/opt/zeppelin/notebook\u0027)\nfrom utils.crypto_loader import CryptoLoader",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-06 23:58:50.650",
+      "progress": 0,
+      "config": {
+        "colWidth": 12.0,
+        "fontSize": 9.0,
+        "results": {},
+        "enabled": true,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        }
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733430877239_1211150371",
+      "id": "paragraph_1733430877239_1211150371",
+      "dateCreated": "2024-12-05 20:34:37.239",
+      "dateStarted": "2024-12-06 23:58:50.665",
+      "dateFinished": "2024-12-06 23:58:50.682",
+      "status": "FINISHED"
+    },
+    {
+      "text": "%pyspark\ncl \u003d CryptoLoader(\n    spark\u003dspark,\n    symbol\u003df\u0027{coin}-USD\u0027.upper(),\n    catalog\u003dcatalog,\n    database\u003dnamespace,\n    table\u003dtable,\n    kafka_server\u003dkafka_server,\n    kafka_topic\u003dkafka_topic\n)\n\ncl.read_stream()",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07 00:16:40.524",
+      "progress": 0,
+      "config": {
+        "colWidth": 12.0,
+        "fontSize": 9.0,
+        "results": {},
+        "enabled": true,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        }
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733529498306_1181337956",
+      "id": "paragraph_1733529498306_1181337956",
+      "dateCreated": "2024-12-06 23:58:18.307",
+      "status": "READY"
+    },
+    {
+      "text": "%pyspark\nfrom kafka import KafkaConsumer\n\nconsumer \u003d KafkaConsumer(\n  \u0027btc\u0027,\n  bootstrap_servers\u003d\u0027kafka:9092\u0027,\n  group_id\u003d\u0027dev\u0027\n)",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-08 12:16:44.659",
+      "progress": 0,
+      "config": {
+        "colWidth": 12.0,
+        "fontSize": 9.0,
+        "results": {},
+        "enabled": true,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        }
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733619495300_396774548",
+      "id": "paragraph_1733619495300_396774548",
+      "dateCreated": "2024-12-08 00:58:15.300",
+      "dateStarted": "2024-12-08 12:16:44.682",
+      "dateFinished": "2024-12-08 12:16:44.832",
+      "status": "FINISHED"
+    },
+    {
+      "text": "%pyspark\nfor message in consumer:\n  print(f\"{message.key}: {message.value}\")",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-08 12:14:23.651",
+      "progress": 0,
+      "config": {
+        "colWidth": 12.0,
+        "fontSize": 9.0,
+        "results": {},
+        "enabled": true,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        }
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "ERROR",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "Fail to execute line 2: for message in consumer:\nTraceback (most recent call last):\n  File \"/tmp/python1270945055064749528/zeppelin_python.py\", line 167, in \u003cmodule\u003e\n    exec(code, _zcUserQueryNameSpace)\n  File \"\u003cstdin\u003e\", line 2, in \u003cmodule\u003e\nNameError: name \u0027consumer\u0027 is not defined\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733619579408_783636708",
+      "id": "paragraph_1733619579408_783636708",
+      "dateCreated": "2024-12-08 00:59:39.409",
+      "dateStarted": "2024-12-08 12:15:21.397",
+      "dateFinished": "2024-12-08 12:15:21.456",
+      "status": "ERROR"
+    },
+    {
+      "text": "%pyspark\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-08 01:00:53.931",
+      "progress": 0,
+      "config": {},
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733619653930_1954235317",
+      "id": "paragraph_1733619653930_1954235317",
+      "dateCreated": "2024-12-08 01:00:53.931",
+      "status": "READY"
+    }
+  ],
+  "name": "btc_read_stream",
+  "id": "2KE7S6SHE",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.11.2",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false
+  },
+  "info": {}
+}

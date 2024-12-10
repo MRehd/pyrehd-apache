@@ -1,0 +1,16 @@
+pandas
+numpy
+scikit-learn
+apache-beam
+neuralprophet
+pyspark
+pyiceberg
+kafka-python
+requests
+mlflow
+cloudpickle
+trino
+plotly
+seaborn
+tensorflow
+polygon-api-client

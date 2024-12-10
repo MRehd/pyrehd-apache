@@ -1,0 +1,11 @@
+/postgres/airflow/data
+/postgres/mlflow/data
+/postgres/hive/data
+/postgres/superset/data
+/airflow/logs/*
+/landing_zone/*
+/hdfs/name/*
+/hdfs/data/*
+/redis/data
+/redis/superset_data
+/kafka/data

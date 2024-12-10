@@ -1,0 +1,8 @@
+pandas
+pyiceberg
+kafka-python
+requests
+mlflow
+cloudpickle
+trino
+apache-airflow-providers-apache-spark

@@ -1,0 +1,226 @@
+{
+  "paragraphs": [
+    {
+      "text": "%pyspark\ncoin \u003d z.input(\u0027coin\u0027, \u0027btc\u0027)\ncatalog \u003d z.input(\u0027catalog\u0027, \u0027iceberg\u0027)\nnamespace \u003d z.input(\u0027namespace\u0027, \u0027crypto\u0027)\ntable \u003d z.input(\u0027table\u0027, \u0027btc\u0027)",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-06 23:32:44.843",
+      "progress": 0,
+      "config": {
+        "colWidth": 12.0,
+        "fontSize": 9.0,
+        "title": false,
+        "results": {},
+        "enabled": true,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        }
+      },
+      "settings": {
+        "params": {
+          "coin": "btc",
+          "catalog": "iceberg",
+          "namespace": "crypto",
+          "table": "btc"
+        },
+        "forms": {
+          "coin": {
+            "type": "TextBox",
+            "name": "coin",
+            "displayName": "coin",
+            "defaultValue": "btc",
+            "hidden": false
+          },
+          "catalog": {
+            "type": "TextBox",
+            "name": "catalog",
+            "displayName": "catalog",
+            "defaultValue": "iceberg",
+            "hidden": false
+          },
+          "namespace": {
+            "type": "TextBox",
+            "name": "namespace",
+            "displayName": "namespace",
+            "defaultValue": "crypto",
+            "hidden": false
+          },
+          "table": {
+            "type": "TextBox",
+            "name": "table",
+            "displayName": "table",
+            "defaultValue": "btc",
+            "hidden": false
+          }
+        }
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733172638004_2004467404",
+      "id": "paragraph_1733172638004_2004467404",
+      "dateCreated": "2024-12-02 20:50:38.006",
+      "dateStarted": "2024-12-06 23:32:44.861",
+      "dateFinished": "2024-12-06 23:32:44.885",
+      "status": "FINISHED"
+    },
+    {
+      "text": "%pyspark\n# files can be read from/written to local path mounted to file:///opt/landing_zone/{format}/{file_name}\n# ex read parquet from landing zone and write to iceberg table in hdfs:\n# data \u003d spark.read.format(\u0027parquet\u0027).load(\u0027file:///opt/landing_zone/parquet/btc.parquet\u0027).select(\u0027Timestamp\u0027, \u0027Low\u0027, \u0027High\u0027, \u0027Open\u0027, \u0027Close\u0027, \u0027Volume\u0027)\n# data.write.format(\"iceberg\").mode(\"append\").save(\"iceberg.crypto.btc\")\nsys.path.append(\u0027/opt/zeppelin/notebook\u0027)\nimport pyspark.sql.functions as f\nfrom utils.crypto_loader import CryptoLoader",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-06 23:32:46.449",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1732574450753_1801080696",
+      "id": "paragraph_1732574450753_1801080696",
+      "dateCreated": "2024-11-25 22:40:50.759",
+      "dateStarted": "2024-12-06 23:32:46.466",
+      "dateFinished": "2024-12-06 23:32:46.492",
+      "status": "FINISHED"
+    },
+    {
+      "text": "%pyspark\ncl \u003d CryptoLoader(\n    spark\u003dspark,\n    symbol\u003df\u0027{coin}-USD\u0027.upper(),\n    catalog\u003dcatalog,\n    database\u003dnamespace,\n    table\u003dtable\n)",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-06 23:32:48.330",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {
+          "namespace": "crypto",
+          "catalog": "iceberg",
+          "table": "btc",
+          "coin": "btc"
+        },
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "Starting from: 2024-12-03 20:03:00\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://zeppelin:4040/jobs/job?id\u003d3"
+            },
+            {
+              "jobUrl": "http://zeppelin:4040/jobs/job?id\u003d4"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1732575201668_289585092",
+      "id": "paragraph_1732575201668_289585092",
+      "dateCreated": "2024-11-25 22:53:21.677",
+      "dateStarted": "2024-12-06 23:32:48.348",
+      "dateFinished": "2024-12-06 23:33:00.256",
+      "status": "FINISHED"
+    },
+    {
+      "text": "%pyspark\ncl.batch_update_ice_table()",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-02 20:55:10.241",
+      "progress": 0,
+      "config": {
+        "colWidth": 12.0,
+        "fontSize": 9.0,
+        "results": {},
+        "enabled": true,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        }
+      },
+      "settings": {
+        "params": {
+          "namespace": "crypto",
+          "catalog": "iceberg",
+          "table": "btc",
+          "coin": "btc"
+        },
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1732822989765_1136414709",
+      "id": "paragraph_1732822989765_1136414709",
+      "dateCreated": "2024-11-28 19:43:09.766",
+      "dateStarted": "2024-12-03 20:03:46.628",
+      "dateFinished": "2024-12-03 20:03:49.695",
+      "status": "FINISHED"
+    }
+  ],
+  "name": "btc_to_iceberg",
+  "id": "2KEH4HSWS",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.11.2",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false
+  },
+  "info": {
+    "inIsolatedMode": false,
+    "startTime": "2024-12-03_20-03-45"
+  }
+}

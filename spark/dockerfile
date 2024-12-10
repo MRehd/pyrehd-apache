@@ -1,0 +1,28 @@
+FROM apache/spark:latest
+
+USER root
+
+# Install Python 3.9 and dependencies
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y python3.9 python3.9-dev python3.9-distutils && \
+    rm /usr/bin/python3 && \
+    ln -s /usr/bin/python3.9 /usr/bin/python3 && \
+    ln -s /usr/bin/python3.9 /usr/bin/python && \
+    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+    python3 get-pip.py && \
+    rm get-pip.py && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.9 as the default
+ENV PYSPARK_PYTHON=/usr/bin/python \
+    PYSPARK_DRIVER_PYTHON=/usr/bin/python
+
+# Install reqs
+COPY requirements.txt /
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r /requirements.txt
+
+USER spark

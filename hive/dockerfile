@@ -1,0 +1,11 @@
+FROM apache/hive:4.0.0
+# Switch to root user to install packages
+USER root
+# Install necessary dependencies
+RUN apt-get update && apt-get install -y curl \
+    && curl -L -o /opt/hive/lib/postgresql-42.2.24.jar https://jdbc.postgresql.org/download/postgresql-42.2.24.jar \
+    && chmod 644 /opt/hive/lib/postgresql-42.2.24.jar \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+# Switch back to the original user (if needed)
+USER hive

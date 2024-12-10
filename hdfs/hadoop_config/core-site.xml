@@ -1,0 +1,19 @@
+<configuration>
+  <!-- Set HDFS as the default filesystem -->
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://hdfs-namenode:9000</value>
+  </property>
+
+  <!-- Temporary directory for Hadoop -->
+  <property>
+    <name>hadoop.tmp.dir</name>
+    <value>/tmp/hadoop</value>
+  </property>
+
+  <!-- I/O related settings -->
+  <property>
+    <name>io.file.buffer.size</name>
+    <value>131072</value>
+  </property>
+</configuration>
