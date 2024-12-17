@@ -1,6 +1,6 @@
 from crypto_loader import CryptoLoader
 from pyspark.sql import SparkSession
-from pyspark import SparkConf, SparkContext
+from pyspark import SparkContext
 import sys
 
 

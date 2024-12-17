@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 import requests as r
 import asyncio
-import threading
 import aiokafka
 import kafka
 import logging
@@ -36,7 +35,6 @@ class CryptoProducer:
     self.mode = mode
 
     self.is_running = False
-    self.thread = None
 
     if not end_time:
       self.end_time = datetime.utcnow().strftime(self.format_str)
@@ -48,12 +46,6 @@ class CryptoProducer:
     )
 
     self.aio_producer = None
-
-    self.mode_mapping = {
-      'sync': self._feed_stream,
-      'async': self._async_feed_stream,
-      'aio_async': self._async_feed_stream_aiokafka
-    }
 
   def _get_data(self, start_time, end_time):
     url = f'https://api.exchange.coinbase.com/products/{self.symbol}/candles?granularity={self.granularity}&start={start_time}&end={end_time}'
@@ -132,58 +124,8 @@ class CryptoProducer:
       self.producer.close()
       raise RuntimeError(e)
 
+  
   async def _async_feed_stream(self):
-
-    self.is_running = True
-    last = None
-    
-    try:
-
-      while self.is_running:
-        # Set data interval
-        intervals = self._break_time_range(self.start_time, self.end_time)
-
-        futures = []
-        timestamps = []
-
-        # Get data for the interval
-        for interval in intervals:
-          data = self._get_data(interval[0], interval[1])
-          for row in data:
-            event = self._transform_data(row)
-            event_timestamp = event['Timestamp'].strftime(self.format_str)
-            max_timestamp = max(timestamps) if len(timestamps) > 0 else last
-            if not last or event_timestamp > max_timestamp:
-              future = self.producer.send(self.kafka_topic, key=event_timestamp, value=event)
-              future.add_callback(self._on_send_success)
-              future.add_errback(self._on_send_error)
-              futures.append(asyncio.get_event_loop().run_in_executor(None, future.get))
-              timestamps.append(event_timestamp)
-
-        last = max(timestamps) if len(timestamps) > 0 else last
-        self.start_time = last
-
-        await asyncio.gather(*futures)
-        self.producer.flush()
-
-        # Wait for more data to be available
-        time_diff = datetime.utcnow() - datetime.strptime(last, self.format_str)
-        time_diff_sec = time_diff.total_seconds()
-
-        if time_diff_sec < self.buffer:
-          wait_time = self.buffer - time_diff_sec
-          if wait_time > 0:
-            time.sleep(wait_time)
-          else:
-            time.sleep(1)
-
-        self.end_time = datetime.utcnow().strftime(self.format_str)
-
-    except Exception as e:
-      self.producer.close()
-      raise RuntimeError(e)
-    
-  async def _async_feed_stream_aiokafka(self):
 
     if not self.aio_producer:
       self.aio_producer = aiokafka.AIOKafkaProducer(
@@ -219,6 +161,7 @@ class CryptoProducer:
 
         last = max(timestamps) if len(timestamps) > 0 else last
         self.start_time = last
+        logging.info(self.start_time)
 
         await asyncio.gather(*futures)
         await self.aio_producer.flush()
@@ -237,22 +180,23 @@ class CryptoProducer:
         self.end_time = datetime.utcnow().strftime(self.format_str)
 
   def start(self):
-    if self.thread and self.thread.is_alive():
-      raise RuntimeError("Producer is already running.")
-
-    self.thread = threading.Thread(target=self.mode_mapping[self.mode])
-    self.thread.daemon = True
-    self.thread.start()
+    if self.mode == 'sync':
+      self._feed_stream()
+    else:
+      loop = asyncio.new_event_loop()
+      asyncio.set_event_loop(loop)
+      try:
+        loop.run_until_complete(self._async_feed_stream())
+      finally:
+        loop.close()
     logging.info("Producer started.")
 
   def stop(self):
-    if not self.is_running:
-      logging.info("Producer is not running.")
-      return
     self.is_running = False
-    if self.thread:
-      self.thread.join()
-    logging.info("Producer stopped.")
+    if self.mode == 'sync':
+      self.producer.close()
+    else:
+      self.aio_producer.close()
     
   def status(self):
     return self.is_running

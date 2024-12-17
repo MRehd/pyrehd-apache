@@ -4,7 +4,7 @@ from airflow.models import Connection
 from airflow import settings
 import logging
 
-def create_connection(host, port, conn_type, conn_id):
+def create_connection(host, port, conn_type, conn_id): # FIX THIS
 
   context = get_current_context()
   task_instance = context['ti']
@@ -18,8 +18,8 @@ def create_connection(host, port, conn_type, conn_id):
     conn = Connection(
       conn_id=conn_id,
       conn_type=conn_type,
-      host=host,
-      port=port
+      host=f'{conn_type}://{host}:{port}',
+      # port=port
     )
 
     session = settings.Session()

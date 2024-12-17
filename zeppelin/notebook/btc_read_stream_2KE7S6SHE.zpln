@@ -153,7 +153,7 @@
     {
       "text": "%pyspark\nfrom kafka import KafkaConsumer\n\nconsumer \u003d KafkaConsumer(\n  \u0027btc\u0027,\n  bootstrap_servers\u003d\u0027kafka:9092\u0027,\n  group_id\u003d\u0027dev\u0027\n)",
       "user": "anonymous",
-      "dateUpdated": "2024-12-08 12:16:44.659",
+      "dateUpdated": "2024-12-15 23:47:31.893",
       "progress": 0,
       "config": {
         "colWidth": 12.0,
@@ -161,11 +161,12 @@
         "results": {},
         "enabled": true,
         "editorSetting": {
-          "language": "python",
+          "language": "scala",
           "editOnDblClick": false,
           "completionKey": "TAB",
           "completionSupport": true
-        }
+        },
+        "editorMode": "ace/mode/scala"
       },
       "settings": {
         "params": {},
@@ -181,14 +182,14 @@
       "jobName": "paragraph_1733619495300_396774548",
       "id": "paragraph_1733619495300_396774548",
       "dateCreated": "2024-12-08 00:58:15.300",
-      "dateStarted": "2024-12-08 12:16:44.682",
-      "dateFinished": "2024-12-08 12:16:44.832",
+      "dateStarted": "2024-12-15 23:47:32.006",
+      "dateFinished": "2024-12-15 23:48:14.972",
       "status": "FINISHED"
     },
     {
       "text": "%pyspark\nfor message in consumer:\n  print(f\"{message.key}: {message.value}\")",
       "user": "anonymous",
-      "dateUpdated": "2024-12-08 12:14:23.651",
+      "dateUpdated": "2024-12-15 23:49:07.614",
       "progress": 0,
       "config": {
         "colWidth": 12.0,
@@ -196,11 +197,12 @@
         "results": {},
         "enabled": true,
         "editorSetting": {
-          "language": "python",
+          "language": "scala",
           "editOnDblClick": false,
           "completionKey": "TAB",
           "completionSupport": true
-        }
+        },
+        "editorMode": "ace/mode/scala"
       },
       "settings": {
         "params": {},
@@ -211,7 +213,7 @@
         "msg": [
           {
             "type": "TEXT",
-            "data": "Fail to execute line 2: for message in consumer:\nTraceback (most recent call last):\n  File \"/tmp/python1270945055064749528/zeppelin_python.py\", line 167, in \u003cmodule\u003e\n    exec(code, _zcUserQueryNameSpace)\n  File \"\u003cstdin\u003e\", line 2, in \u003cmodule\u003e\nNameError: name \u0027consumer\u0027 is not defined\n"
+            "data": "Fail to execute line 2: for message in consumer:\nTraceback (most recent call last):\n  File \"/tmp/python213944693156866920/zeppelin_python.py\", line 167, in \u003cmodule\u003e\n    exec(code, _zcUserQueryNameSpace)\n  File \"\u003cstdin\u003e\", line 2, in \u003cmodule\u003e\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/consumer/group.py\", line 1193, in __next__\n    return self.next_v2()\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/consumer/group.py\", line 1201, in next_v2\n    return next(self._iterator)\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/consumer/group.py\", line 1116, in _message_generator_v2\n    record_map \u003d self.poll(timeout_ms\u003dtimeout_ms, update_offsets\u003dFalse)\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/consumer/group.py\", line 655, in poll\n    records \u003d self._poll_once(remaining, max_records, update_offsets\u003dupdate_offsets)\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/consumer/group.py\", line 675, in _poll_once\n    self._coordinator.poll()\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/coordinator/consumer.py\", line 289, in poll\n    self.ensure_active_group()\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/coordinator/base.py\", line 407, in ensure_active_group\n    self._client.poll(future\u003dfuture)\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/client_async.py\", line 602, in poll\n    self._poll(timeout / 1000)\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/site-packages/kafka/client_async.py\", line 634, in _poll\n    ready \u003d self._selector.select(timeout)\n  File \"/opt/conda/envs/python_3_with_R/lib/python3.9/selectors.py\", line 469, in select\n    fd_event_list \u003d self._selector.poll(timeout, max_ev)\n  File \"/opt/spark/python/pyspark/context.py\", line 382, in signal_handler\n    raise KeyboardInterrupt()\nKeyboardInterrupt\n"
           }
         ]
       },
@@ -221,9 +223,9 @@
       "jobName": "paragraph_1733619579408_783636708",
       "id": "paragraph_1733619579408_783636708",
       "dateCreated": "2024-12-08 00:59:39.409",
-      "dateStarted": "2024-12-08 12:15:21.397",
-      "dateFinished": "2024-12-08 12:15:21.456",
-      "status": "ERROR"
+      "dateStarted": "2024-12-15 23:49:07.670",
+      "dateFinished": "2024-12-15 23:49:10.135",
+      "status": "ABORT"
     },
     {
       "text": "%pyspark\n",

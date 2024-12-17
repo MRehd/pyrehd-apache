@@ -5,7 +5,6 @@ from airflow.exceptions import AirflowException
 from airflow.hooks.base import BaseHook
 from airflow.models import Connection
 from airflow import settings
-from trino.dbapi import connect
 import datetime as dt
 import logging
 import json

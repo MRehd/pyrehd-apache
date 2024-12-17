@@ -61,6 +61,7 @@ def create_dag(dag_id, entity, catalog, schema, schedule, kafka_topic):
       application_args=[str(arg) for arg in args],
       conf={
         'spark.sql.extensions': 'org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions',
+        'spark.cores.max': '1',
         'spark.master': f'spark://{SPARK_HOST}:{SPARK_PORT}',
         'spark.sql.catalog.iceberg': 'org.apache.iceberg.spark.SparkCatalog',
         'spark.sql.catalog.iceberg.type': 'hive',

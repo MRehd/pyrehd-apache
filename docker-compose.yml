@@ -111,8 +111,6 @@ services:
       - SPARK_WORKER_LOG=/opt/spark/logs
       - SPARK_WORKER_WEBUI_PORT=8081
       - SPARK_MASTER=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_WORKER_CORES=1
     ports:
       - "8086:8081"
     entrypoint: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
@@ -145,6 +143,8 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: '5432'
       AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__CORE__PARALLELISM: '12'
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: '12'
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${_AIRFLOW_POSTGRES_USER}:${_AIRFLOW_POSTGRES_PASSWORD}@postgres:5432/${AIRFLOW_POSTGRES_DB}
       AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${_AIRFLOW_POSTGRES_USER}:${_AIRFLOW_POSTGRES_PASSWORD}@postgres:5432/${AIRFLOW_POSTGRES_DB}
       AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
@@ -154,6 +154,7 @@ services:
       AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
       AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
       AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE: 'true'
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${_AIRFLOW_POSTGRES_PASSWORD}
       SPARK_HOST: ${SPARK_HOST}
       SPARK_PORT: ${SPARK_PORT}
       TRINO_HOST: ${TRINO_HOST}

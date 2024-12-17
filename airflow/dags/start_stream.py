@@ -2,13 +2,9 @@ from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
 from airflow.providers.http.hooks.http import HttpHook
 from airflow.exceptions import AirflowException
-from airflow.hooks.base import BaseHook
-from airflow.models import Connection
-from airflow import settings
 from utils import create_connection
 from trino.dbapi import connect
 import datetime as dt
-import logging
 import json
 import os
 
@@ -25,6 +21,12 @@ KAFKA_SERVER = f'{KAFKA_HOST}:{KAFKA_PORT}'
 # TRINO
 TRINO_HOST = os.getenv('TRINO_HOST')
 TRINO_PORT = os.getenv('TRINO_PORT')
+# START TIMESTAMPS
+MIN_TIMESTAMP = {
+  'btc': '2015-07-20 21:37:00',
+  'eth': '2016-05-18 00:14:00'
+}
+
 
 with open(f'{CONFIG_PATH}/dags.json', 'r') as file:
   config = json.loads(file.read())
@@ -40,6 +42,10 @@ def create_dag(dag_id, entity, catalog, schema, schedule, kafka_topic, mode):
     
     @task(task_id=f'{entity}_get_max_timestamp', retries=1)
     def get_max_timestamp(host, port, catalog, schema, entity):
+
+      context = get_current_context()
+      task_instance = context['ti']
+      
       conn = connect(
           host=host,
           port=port,
@@ -49,10 +55,14 @@ def create_dag(dag_id, entity, catalog, schema, schedule, kafka_topic, mode):
       )
       cur = conn.cursor()
       cur.execute(f'SELECT max(Timestamp) FROM {entity}')
-      return cur.fetchone()[0].strftime('%Y-%m-%d %H:%M:%S')
+      last_timestamp = cur.fetchone()[0]
+      return last_timestamp.strftime('%Y-%m-%d %H:%M:%S') if last_timestamp else MIN_TIMESTAMP[entity]
 
     @task(task_id=f'stream_{entity}', retries=1)
     def stream(kafka_server, kafka_topic, entity, conn_id, start_time):
+
+      context = get_current_context()
+      task_instance = context['ti']
       
       http_hook = HttpHook(method='POST', http_conn_id=conn_id)
 
@@ -67,6 +77,8 @@ def create_dag(dag_id, entity, catalog, schema, schedule, kafka_topic, mode):
         'start_time': start_time,
         'mode': mode
       }
+
+      task_instance.xcom_push(key='params', value=data)
 
       response = http_hook.run(f'start-stream', data=json.dumps(data), headers=headers)
 

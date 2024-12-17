@@ -3,6 +3,8 @@
 /postgres/hive/data
 /postgres/superset/data
 /airflow/logs/*
+/airflow/dags/__pycache__
+/airflow/plugins/__pycache__
 /landing_zone/*
 /hdfs/name/*
 /hdfs/data/*
