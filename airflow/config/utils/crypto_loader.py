@@ -78,7 +78,7 @@ class CryptoLoader:
         table_exists = spark.catalog.tableExists(self.iceberg_table)
 
         if not table_exists:
-          empty_df.writeTo(self.iceberg_table).using("iceberg").partitionBy(f.year(f.col('Timestamp'))).create()
+          empty_df.writeTo(self.iceberg_table).using("iceberg").partitionedBy(f.year(f.col('Timestamp'))).create()
           print("Table created successfully!")
         else:
           print("Table already exists. Skipping creation.")
@@ -130,10 +130,10 @@ class CryptoLoader:
   
   def recompact_partition(self, partitions, partition_name, repartition_size):
     for partition in partitions:
-        df = self.spark.read.format("iceberg").load(self.iceberg_table).where(f"{partition_name} = '{partition}'")
-        df_repartitioned = df.repartition(repartition_size)
-        df_repartitioned.write.format("iceberg").mode("overwrite").option("replaceWhere", f"{partition_name}  = '{partition}'").save(self.iceberg_table)
-        print(f"Compacted {partition_name} {partition}")
+      df = self.spark.read.format("iceberg").load(self.iceberg_table).where(f"{partition_name} = '{partition}'")
+      df_repartitioned = df.repartition(repartition_size)
+      df_repartitioned.write.format("iceberg").mode("overwrite").option("replaceWhere", f"{partition_name}  = '{partition}'").save(self.iceberg_table)
+      print(f"Compacted {partition_name} {partition}")
     return
   
   def get_latest_timestamp(self):
@@ -167,13 +167,27 @@ class CryptoLoader:
           .withColumn('Year', f.date_format(f.col('Timestamp'), 'yyyy').cast('string')) \
           .select(*self.schema.fieldNames())
 
-        interval_df.write.mode('append').format('iceberg').save(self.iceberg_table)
+        interval_df.write.mode('append').format('iceberg').save(self.iceberg_table) #.toTable(self.iceberg_table)
         print(f'Loaded {len(batch)} rows')
 
         batch = []
         self.start_time = interval[1]
 
   def read_stream(self):
+
+    def merge_strat(batch_df, batch_id):
+      temp_view = f"{self.table}_updates"
+      batch_df.createOrReplaceGlobalTempView(temp_view)
+      self.spark.sql(f"""
+          MERGE INTO {self.iceberg_table} AS target
+          USING global_temp.{temp_view} AS source
+          ON target.Timestamp = source.Timestamp
+          WHEN MATCHED THEN
+            UPDATE SET *
+          WHEN NOT MATCHED THEN
+            INSERT *
+        """
+      )
     
     stream = self.spark \
       .readStream \
@@ -184,7 +198,7 @@ class CryptoLoader:
       .load()
     
     parsed_stream = stream.select(f.from_json(f.decode(f.col("value"), 'utf-8').cast("string"), self.schema).alias("data"))
-    transformed_stream = parsed_stream.select('data.*')
+    transformed_stream = parsed_stream.select('data.*').dropDuplicates(['Timestamp'])
 
     iceberg_df = transformed_stream.writeStream \
       .format("iceberg") \
@@ -192,12 +206,13 @@ class CryptoLoader:
       .trigger(processingTime='20 seconds') \
       .option("fanout-enabled", "true") \
       .option("checkpointLocation", self.stream_checkpoint_path) \
-      .toTable(self.iceberg_table)
+      .foreachBatch(merge_strat) \
+      .start()
     
     try:
       iceberg_df.awaitTermination()
     except Exception as e:
-        logging.error(f"Error in stream: {e}")
+      logging.error(f"Error in stream: {e}")
 
   def read_batch_stream(self):
 
